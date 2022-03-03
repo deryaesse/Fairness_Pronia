@@ -17,7 +17,7 @@ pronia <- CHR_raters %>% select("PSN", "PROGNOSTIC_01_01_Transition_T0", "PROGNO
 pronia <- full_join(pronia, PRONIA_Demographics, by="PSN")
 
 italy <- c("ITALIA", "Italia", "italy", "Italy", "Itlay", "Milan", "Milano", "udine", "Udine")
-germany <- c("germany", "Germany", "Germnay", "Deutschland")
+germany <- c("germany", "Germany", "Germnay", "Deutschland", "Munich")
 uk <- c("England", "UK", "United Kingdom")
 finland <- c("Finland", "Suomi")
 
