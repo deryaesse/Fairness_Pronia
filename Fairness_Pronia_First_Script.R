@@ -154,6 +154,7 @@ sex_t <- rbind(res_cornblatt %>% mutate(Model='Cornblatt'),
    subtitle = "(Protected Group: Male)")
 
 
+
 education_t <- rbind(res_cornblatt %>% mutate(Model='Cornblatt'),
              res_carrion %>% mutate(Model='Carrion'),
              res_salokangas %>% mutate(Model="Salokangas"),
@@ -279,4 +280,5 @@ education_f <- rbind(res_funcr %>% mutate(Model='Role Functioning'),
         axis.text.x=element_blank()) +
   ggtitle(label = 'Fairness criteria for sensitive attribute: Education', 
           subtitle = "(Protected Group: High)")
+
 
