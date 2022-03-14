@@ -154,6 +154,24 @@ sex_t <- rbind(res_cornblatt %>% mutate(Model='Cornblatt'),
    subtitle = "(Protected Group: Male)")
 
 
+sex_t_table <- rbind(res_cornblatt %>% mutate(Model='Cornblatt'),
+                     res_carrion %>% mutate(Model='Carrion'),
+                     res_salokangas %>% mutate(Model="Salokangas"),
+                     res_clinician %>% mutate(Model="Clinician")
+) %>%
+  group_by(Model, SEX) %>%
+  filter(!is.na(SEX)) %>%
+  summarize_at(
+    vars(TP, TN, FP, FN), funs(mean))%>%
+  mutate(PPV = TP/(TP+FP),
+         NPV = TN/(TN+FN),
+         Accuracy = TP+TN/(FP+TN+FN+TP),
+         Sensitivity = TP/(TP+FN),
+         Specificity = TN/(TN+FP)) %>%
+  select(-c(TP, FP, TN, FN))
+
+
+
 
 education_t <- rbind(res_cornblatt %>% mutate(Model='Cornblatt'),
              res_carrion %>% mutate(Model='Carrion'),
@@ -187,6 +205,22 @@ education_t <- rbind(res_cornblatt %>% mutate(Model='Cornblatt'),
         axis.text.x=element_blank()) +
   ggtitle(label = 'Fairness criteria for sensitive attribute: Education', 
    subtitle = "(Protected Group: High)")
+
+ed_t_table <- rbind(res_cornblatt %>% mutate(Model='Cornblatt'),
+                     res_carrion %>% mutate(Model='Carrion'),
+                     res_salokangas %>% mutate(Model="Salokangas"),
+                     res_clinician %>% mutate(Model="Clinician")
+) %>%
+  group_by(Model, edstat) %>%
+  filter(!is.na(edstat)) %>%
+  summarize_at(
+    vars(TP, TN, FP, FN), funs(mean))%>%
+  mutate(PPV = TP/(TP+FP),
+         NPV = TN/(TN+FN),
+         Accuracy = TP+TN/(FP+TN+FN+TP),
+         Sensitivity = TP/(TP+FN),
+         Specificity = TN/(TN+FP)) %>%
+  select(-c(TP, FP, TN, FN))
 
 
 ### Fairness Functioning
@@ -251,6 +285,23 @@ sex_f <- rbind(res_funcr %>% mutate(Model='Role Functioning'),
           subtitle = "(Protected Group: Male)")
 
 
+## sex functioning table 
+
+sex_f_table <- rbind(res_funcr %>% mutate(Model='Role Functioning'),
+      res_funcs %>% mutate(Model='Social Functioning')) %>%
+  group_by(Model, SEX) %>%
+  filter(!is.na(SEX)) %>%
+  summarize_at(
+    vars(TP, TN, FP, FN), funs(mean))%>%
+  mutate(PPV = TP/(TP+FP),
+         NPV = TN/(TN+FN),
+         Accuracy = TP+TN/(FP+TN+FN+TP),
+         Sensitivity = TP/(TP+FN),
+         Specificity = TN/(TN+FP)) %>%
+  select(-c(TP, FP, TN, FN))
+
+
+
 education_f <- rbind(res_funcr %>% mutate(Model='Role Functioning'),
                    res_funcs %>% mutate(Model='Social Functioning')) %>%
   group_by(Model, edstat) %>%
@@ -282,3 +333,17 @@ education_f <- rbind(res_funcr %>% mutate(Model='Role Functioning'),
           subtitle = "(Protected Group: High)")
 
 
+##education_f_ table
+
+rbind(res_funcr %>% mutate(Model='Role Functioning'),
+      res_funcs %>% mutate(Model='Social Functioning')) %>%
+  group_by(Model, edstat) %>%
+  filter(!is.na(edstat)) %>%
+  summarize_at(
+    vars(TP, TN, FP, FN), funs(mean))%>%
+  mutate(PPV = TP/(TP+FP),
+         NPV = TN/(TN+FN),
+         Accuracy = TP+TN/(FP+TN+FN+TP),
+         Sensitivity = TP/(TP+FN),
+         Specificity = TN/(TN+FP)) %>%
+  select(-c(TP, FP, TN, FN))
