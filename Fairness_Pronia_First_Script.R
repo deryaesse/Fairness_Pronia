@@ -11,6 +11,7 @@ PRONIA_Demographics <- read_excel("C:/Users/derya/Desktop/Algorithmic Fairness/P
 CHR_S_Nikos_Pred <- read_excel("C:/Users/derya/Desktop/Algorithmic Fairness/ProniaFairness/CHR_S_Nikos_Pred.xls")
 CHR_R_Nikos_Pred <- read_excel("C:/Users/derya/Desktop/Algorithmic Fairness/ProniaFairness/CHR_R_Nikos_Pred.xls")
 transition_models <- read_excel("C:/Users/derya/Desktop/Algorithmic Fairness/ProniaFairness/transition_models (1).xls")
+transition_multimodal <- read_excel("C:/Users/derya/Downloads/TransitionPredictions4Joseph.xlsx")
 
 names(CHR_raters)
 pronia <- CHR_raters %>% select("PSN", "PROGNOSTIC_01_01_Transition_T0", "PROGNOSTIC_02_01_PoorOutcome_T0")
@@ -341,6 +342,167 @@ rbind(res_funcr %>% mutate(Model='Role Functioning'),
   filter(!is.na(edstat)) %>%
   summarize_at(
     vars(TP, TN, FP, FN), funs(mean))%>%
+  mutate(PPV = TP/(TP+FP),
+         NPV = TN/(TN+FN),
+         Accuracy = TP+TN/(FP+TN+FN+TP),
+         Sensitivity = TP/(TP+FN),
+         Specificity = TN/(TN+FP)) %>%
+  select(-c(TP, FP, TN, FN))
+
+
+
+#### multimodal transition
+
+transition <- transition_models %>% select(c("PSN", "transition"))
+transition <- left_join(transition, pronia, by="PSN")
+transition_multimodal$PSN <- as.double(transition_multimodal$PSN)
+all_transition <- left_join(transition, transition_multimodal, by="PSN")
+all_transition <- all_transition %>% filter(!is.na(Studygroup))
+
+
+res_mri <- all_transition %>% 
+  select("PSN", sensitive_attributes, "transition", "PRED_LABEL_MRI") %>% 
+  mutate(
+    TP=ifelse(transition==1 & PRED_LABEL_MRI==1, 1,0),
+    TN=ifelse(transition==0 & PRED_LABEL_MRI==-1, 1,0),
+    FP=ifelse(transition==0 & PRED_LABEL_MRI==1, 1,0),
+    FN=ifelse(transition==1 & PRED_LABEL_MRI==-1, 1,0)) %>%
+  select(-"PRED_LABEL_MRI")# %>%
+# summarize_at(
+ # vars(TP, TN, FP, FN), funs(sum(., na.rm = TRUE)))
+
+res_prs <- all_transition %>% 
+  select("PSN", sensitive_attributes, "transition", "PRED_LABEL_PRS") %>% 
+  mutate(
+    TP=ifelse(transition==1 & PRED_LABEL_PRS==1, 1,0),
+    TN=ifelse(transition==0 & PRED_LABEL_PRS==-1, 1,0),
+    FP=ifelse(transition==0 & PRED_LABEL_PRS==1, 1,0),
+    FN=ifelse(transition==1 & PRED_LABEL_PRS==-1, 1,0)) %>%
+  select(-"PRED_LABEL_PRS") #%>%
+ # summarize_at(
+  #  vars(TP, TN, FP, FN), funs(sum(., na.rm = TRUE)))
+
+res_clin <- all_transition %>% 
+  select("PSN", sensitive_attributes, "transition", "PRED_LABEL_Clin") %>% 
+  mutate(
+    TP=ifelse(transition==1 & PRED_LABEL_Clin==1, 1,0),
+    TN=ifelse(transition==0 & PRED_LABEL_Clin==-1, 1,0),
+    FP=ifelse(transition==0 & PRED_LABEL_Clin==1, 1,0),
+    FN=ifelse(transition==1 & PRED_LABEL_Clin==-1, 1,0)) %>%
+  select(-"PRED_LABEL_Clin") #%>%
+ # summarize_at( vars(TP, TN, FP, FN), funs(sum(.,na.rm=TRUE)))
+
+res_stk <- all_transition %>% 
+  select("PSN", sensitive_attributes, "transition", "PRED_LABEL_Stk") %>% 
+  mutate(
+    TP=ifelse(transition==1 & PRED_LABEL_Stk==1, 1,0),
+    TN=ifelse(transition==0 & PRED_LABEL_Stk==-1, 1,0),
+    FP=ifelse(transition==0 & PRED_LABEL_Stk==1, 1,0),
+    FN=ifelse(transition==1 & PRED_LABEL_Stk==-1, 1,0)) %>%
+  select(-"PRED_LABEL_Stk") #%>%
+ # summarize_at(
+  #  vars(TP, TN, FP, FN), funs(sum(.,na.rm = TRUE)))
+
+
+sex_multimodal <- rbind(res_mri %>% mutate(Model='MRI'),
+               res_clin %>% mutate(Model='Clinical'),
+               res_prs %>% mutate(Model='Polygenetic Risk Score'),
+               res_stk %>% mutate(Model='Stacked')
+) %>%
+  group_by(Model, SEX) %>%
+  filter(!is.na(SEX)) %>%
+  summarize_at(
+    vars(TP, TN, FP, FN), funs(mean(., na.rm=TRUE))
+  )%>%
+  mutate(
+    "Accuracy Equality" = (TP+TN)/(TP+FP+TN+FN),
+    #"Equal Opportunity" = FN/(TP+FN),
+    "Predictive Equality" = FP/(FP+TN),
+    "Predictive Parity" = TP/(TP+FP),
+    #"Treatment Equality" = (FN/FP),
+    #"MCC Parity" = abs((((TP * TN) - (FP * FN)) / sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))))
+  ) %>%
+  select(-c(TP, FP, TN, FN)) %>%
+  pivot_longer(-c(Model, SEX)) %>%
+  pivot_wider(names_from = SEX, values_from=value) %>%
+  mutate(ratio = `male`/`female`) %>%
+  ggplot(aes(y=ratio, x=Model, fill=Model)) + geom_col(stat='identity', position=position_dodge()) + 
+  theme_minimal() + 
+  geom_hline(yintercept = 0.8, lty=2) + 
+  geom_hline(yintercept = 1.25, lty=2) + 
+  scale_fill_grey() + 
+  facet_grid(.~name, labeller=label_wrap_gen(width = 10, multi_line = TRUE)) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank()) +
+  ggtitle(label = 'Fairness criteria for sensitive attribute: Sex', 
+          subtitle = "(Protected Group: Male)")
+
+
+## sex functioning table 
+
+sex_multimodal_table <- rbind(res_mri %>% mutate(Model='MRI'),
+                              res_clin %>% mutate(Model='Clinical'),
+                              res_prs %>% mutate(Model='Polygenetic Risk Score'),
+                              res_stk %>% mutate(Model='Stacked')
+)%>%
+  group_by(Model, SEX) %>%
+  filter(!is.na(SEX)) %>%
+  summarize_at(
+    vars(TP, TN, FP, FN), funs(mean(.,na.rm=TRUE)))%>%
+  mutate(PPV = TP/(TP+FP),
+         NPV = TN/(TN+FN),
+         Accuracy = TP+TN/(FP+TN+FN+TP),
+         Sensitivity = TP/(TP+FN),
+         Specificity = TN/(TN+FP)) %>%
+  select(-c(TP, FP, TN, FN))
+
+
+
+education__multimodal <- rbind(res_mri %>% mutate(Model='MRI'),
+                               res_clin %>% mutate(Model='Clinical'),
+                               res_prs %>% mutate(Model='Polygenetic Risk Score'),
+                               res_stk %>% mutate(Model='Stacked')
+)%>%
+  group_by(Model, edstat) %>%
+  filter(!is.na(edstat)) %>%
+  summarize_at(
+    vars(TP, TN, FP, FN), funs(mean(.,na.rm=TRUE))
+  )%>%
+  mutate(
+    "Accuracy Equality" = (TP+TN)/(TP+FP+TN+FN),
+    #"Equal Opportunity" = FN/(TP+FN),
+    "Predictive Equality" = FP/(FP+TN),
+    "Predictive Parity" = TP/(TP+FP),
+    #"Treatment Equality" = (FN/FP),
+    "MCC Parity" = abs((((TP * TN) - (FP * FN)) / sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))))
+  ) %>%
+  select(-c(TP, FP, TN, FN)) %>%
+  pivot_longer(-c(Model, edstat)) %>%
+  pivot_wider(names_from = edstat, values_from=value) %>%
+  mutate(ratio = `high`/`low`) %>%
+  ggplot(aes(y=ratio, x=Model, fill=Model)) + geom_col(stat='identity', position=position_dodge()) + 
+  theme_minimal() + 
+  geom_hline(yintercept = 0.8, lty=2) + 
+  geom_hline(yintercept = 1.25, lty=2) + 
+  scale_fill_grey() + 
+  facet_grid(.~name, labeller=label_wrap_gen(width = 10, multi_line = TRUE)) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank()) +
+  ggtitle(label = 'Fairness criteria for sensitive attribute: Education', 
+          subtitle = "(Protected Group: High)")
+
+
+##education_f_ table
+
+rbind(res_mri %>% mutate(Model='MRI'),
+      res_clin %>% mutate(Model='Clinical'),
+      res_prs %>% mutate(Model='Polygenetic Risk Score'),
+      res_stk %>% mutate(Model='Stacked')
+)%>%
+  group_by(Model, edstat) %>%
+  filter(!is.na(edstat)) %>%
+  summarize_at(
+    vars(TP, TN, FP, FN), funs(mean(.,na.rm=TRUE)))%>%
   mutate(PPV = TP/(TP+FP),
          NPV = TN/(TN+FN),
          Accuracy = TP+TN/(FP+TN+FN+TP),
